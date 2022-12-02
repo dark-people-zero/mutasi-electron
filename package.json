@@ -1,0 +1,28 @@
+{
+  "name": "mutasi-electron",
+  "version": "1.0.0",
+  "description": "",
+  "main": "app.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dark-people-zero/mutasi-electron.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/dark-people-zero/mutasi-electron/issues"
+  },
+  "homepage": "https://github.com/dark-people-zero/mutasi-electron#readme",
+  "dependencies": {
+    "axios": "^1.2.0",
+    "electron": "^22.0.0",
+    "jquery": "^3.6.1",
+    "moment": "^2.29.4",
+    "random-useragent": "^0.5.0",
+    "select2": "^4.1.0-rc.0"
+  }
+}
