@@ -7,6 +7,9 @@ const axios = require('axios');
 const qs = require('querystring');
 var captcha = null;
 
+window.alert = function(){};
+window.confirm = function(){};
+
 document.addEventListener("DOMContentLoaded", async function() {
     var data = JSON.parse(localStorage.getItem("data"));
     if (checkRejectIp()) {
@@ -27,9 +30,12 @@ document.addEventListener("DOMContentLoaded", async function() {
         data.message = "Salah username atau password";
         ipc.send("try:log:error", data);
         ipc.send("win:close", data.rekening_number);
-    }else if (halamanLogin()) {
+    }else if(halamanLogin()) {
         await login();
         loginClick();
+    }else if(checkHalamanUtama()) {
+        console.log("halaman Utama");
+        getSaldoDanMutasi(data);
     }
 })
 
@@ -64,6 +70,10 @@ function cekErrorCaptcha() {
 async function login() {
     await getImage();
     var data = JSON.parse(localStorage.getItem("data"));
+    data.account_username = "vriskanandya24";
+    data.account_password = "Aa788888";
+    data.rekening_number = "110901002575537";
+
     var lang = document.querySelector('input[name="j_language"]').value;
     if (lang == "en_EN") document.querySelector('input[placeholder="username"]').value = data.account_username;
     if (lang == "in_ID") document.querySelector('input[placeholder="user ID"]').value = data.account_username;
@@ -114,6 +124,10 @@ function getCaptcha(id) {
             setTimeout(() => {
                 getCaptcha(id);
             }, 1000);
+        }else if(res == "ERROR_WRONG_CAPTCHA_ID"){
+            setTimeout(() => {
+                login();
+            }, 1000);
         }else{
             document.querySelector('input[name="j_code"]').value = res;
         }
@@ -138,4 +152,66 @@ function loginClick() {
             loginClick();
         }, 1000);
     }
+}
+
+function checkHalamanUtama() {
+    return document.body.textContent.toLowerCase().includes('informasi & mutasi');
+}
+
+function getSaldoDanMutasi(data) {
+    data.rekening_number = "110901002575537";
+    document.getElementById("myaccounts").click();
+    var datax = {
+        saldo: null,
+        mutasi: null
+    }
+    setTimeout(() => {
+        console.log("masuk ke halaman account");
+        var iframeMenu = document.getElementById('iframemenu');
+        if (iframeMenu) {
+            console.log("iframe dapet");
+            if (datax.saldo == null) {
+                iframeMenu.contentWindow.document.querySelector('a[href="BalanceInquiry.html"]').click();
+                setTimeout(() => {
+                    console.log("masuk ke halaman balance");
+                    var iframeContent = document.getElementById('content');
+                    if (iframeContent) {
+                        console.log("irame content dapet");
+                        var tableSaldo = iframeContent.contentWindow.document.querySelector('#tabel-saldo');
+                        datax.saldo = tableSaldo.outerHTML;
+
+                        if (datax.mutasi == null) {
+                            console.log("berarti slado udah dapet ini saldonya", datax.saldo);
+                            iframeMenu.contentWindow.document.querySelector('a[href="AccountStatement.html"]').click();
+                            setTimeout(() => {
+                                var iframeContent = document.getElementById('content');
+                                if (iframeContent) {
+                                    iframeContent.contentWindow.document.getElementById('ACCOUNT_NO').value = data.rekening_number;
+                                    iframeContent.contentWindow.document.querySelector('input[name="submitButton"]').click();
+
+                                    setTimeout(() => {
+                                        var tableMutasi = iframeContent.contentWindow.document.querySelector('#tabel-saldo');
+                                        datax.mutasi = tableMutasi.outerHTML;
+
+                                        ipc.send("recive:data", {
+                                            rek: data,
+                                            hasil: datax
+                                        })
+                                        console.log(datax);
+                                        logout();
+                                    }, 3000);
+                                }
+                            }, 2000);
+                        }
+                    }
+                }, 2000);
+            }
+        }
+    }, 2000);
+}
+
+
+function logout() {
+    console.log("proses logout");
+    document.querySelector('a[href="Logout.html"]').click();
 }

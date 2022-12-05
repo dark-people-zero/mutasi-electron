@@ -362,7 +362,7 @@ const win = {
 				window[id].webContents.send("config", params)
 				window[id].webContents.openDevTools();
 
-				robotRekening.set(id, true);
+				// robotRekening.set(id, true);
 			}
 		}
 	},
@@ -474,7 +474,6 @@ const log = {
 const imageCaptcha = {
 	get: async (params) => {
 		const dir = path.join(__dirname, `/log/image/captcha/${params.rekening_number}.png`);
-		console.log(dir);
 		var data = await solver.readImg(dir);
 		return data;
 	},
@@ -521,6 +520,23 @@ ipcMain.on("image:captcha:set", (event, params) => imageCaptcha.set(params));
 ipcMain.on("image:captcha:get", async (event, params) => {
 	event.returnValue = await imageCaptcha.get(params);
 });
+
+ipcMain.on("recive:data", (event, data) => {
+	const date = moment().format("DD-MM-YYYY");
+	const dateTime = moment().format("DD-MM-YYYY HH:mm:ss");
+	const dir = path.join(__dirname, `/log/data/${date}`);
+	if (!fs.existsSync(dir)) fs.mkdirSync(dir, {recursive: true});
+	const dirFile = path.join(dir, data.rek.rekening_number+".json");
+	if (fs.existsSync(dirFile)) {
+		var oldData = fs.readFileSync(dirFile);
+		oldData = oldData.push(data.hasil);
+		fs.writeFileSync(dirFile, JSON.stringify(oldData));
+	}else{
+		fs.writeFileSync(dirFile, JSON.stringify([data.hasil]));
+	}
+})
+
+
 
 app.whenReady().then(async () => {
 	// await func.init();
