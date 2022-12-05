@@ -13,6 +13,9 @@ const moment = require("moment");
 const axios = require('axios');
 const randomUseragent = require('random-useragent');
 
+const CaptchaSolver = require('./captchasolver');
+const solver = new CaptchaSolver();
+
 const setting = require("./setting.json");
 
 const createWindow = (params) => {
@@ -308,7 +311,8 @@ const func = {
 	listRekening: async (bank) => {
 		await func.bk.init();
 		window["main"].webContents.send("recive:listRekening",func.rekening.get(bank));
-	}
+	},
+	
 }
 
 const win = {
@@ -323,27 +327,42 @@ const win = {
 		},
 		child: (params) => {
 			var id = params.rekening_number;
+			const cnf = setting.listBank.filter(e => e.bank_code == setting.bankActive);
 			var browserName = ['Android Browser', 'IEMobile', 'Mobile Safari', 'Opera Mobi'];
-			const userAgent = randomUseragent.getRandom(e => !browserName.includes(e.browserName) && userAgentList[id] != e.userAgent)
+			const userAgent = randomUseragent.getRandom(e => {
+				if (cnf[0].browserMobile) {
+					return browserName.includes(e.browserName) && userAgentList[id] != e.userAgent;
+				}else{
+					return !browserName.includes(e.browserName) && userAgentList[id] != e.userAgent;
+				}
+			})
 			userAgentList[id] = userAgent;
-			url = setting.listBank.filter(e => e.bank_code == setting.bankActive);
-			if (url.length > 0) {
-				url = url[0].url;
-				window[id] = createWindow({
+			
+			if (cnf.length > 0) {
+				var url = cnf[0].url;
+				var preload = cnf[0].preload;
+				var configWin = {
 					frame: true,
 					type: "url",
 					target: url,
-					preload: "./preload/bank.js",
+					preload: "./preload/"+preload,
 					resizable: true,
 					x: 0,
 					y: 0,
 					userAgent: userAgent,
 					autoHideMenuBar: true,
-				});
+				}
+
+				if (cnf[0].width) configWin.width = cnf[0].width;
+				if (cnf[0].height) configWin.height = cnf[0].height;
+
+				window[id] = createWindow(configWin);
 				window[id].webContents.session.clearCache();
 				window[id].webContents.session.clearStorageData();
 				window[id].webContents.send("config", params)
 				window[id].webContents.openDevTools();
+
+				robotRekening.set(id, true);
 			}
 		}
 	},
@@ -405,7 +424,7 @@ const tryCreate = {
 			percobaan.captcha[id] = i + 1;
 		},
 		reset: (id) => delete percobaan.captcha[id]
-	}
+	},
 }
 
 const log = {
@@ -432,7 +451,6 @@ const log = {
 	},
 	error: (params, message) => {
 		try {
-			console.log(params);
 			const date = moment().format("DD-MM-YYYY");
 			const dateTime = moment().format("DD-MM-YYYY HH:mm:ss");
 			const dir = path.join(__dirname, `/log/error/${date}/${params.situs}/${setting.bankActive}`);
@@ -452,6 +470,24 @@ const log = {
 		}
 	},
 }
+
+const imageCaptcha = {
+	get: async (params) => {
+		const dir = path.join(__dirname, `/log/image/captcha/${params.rekening_number}.png`);
+		console.log(dir);
+		var data = await solver.readImg(dir);
+		return data;
+	},
+	set: (params) => {
+		const dir = path.join(__dirname, `/log/image/captcha`);
+		if (!fs.existsSync(dir)) fs.mkdirSync(dir, {recursive: true});
+		const dirFile = path.join(dir, params.bank.rekening_number+".png");
+		fs.writeFileSync(dirFile, params.base64, 'base64', function(err) {
+			if (err) log.error("Error create image captcha");
+		})
+	},
+}
+
 
 ipcMain.on("win:create", (event, params) => win.create.child(params));
 ipcMain.on("win:reload", (event, params) => win.reload.child(params));
@@ -480,6 +516,11 @@ ipcMain.on("try:captcha", (event, params) => {
 		return true;
 	}
 })
+
+ipcMain.on("image:captcha:set", (event, params) => imageCaptcha.set(params));
+ipcMain.on("image:captcha:get", async (event, params) => {
+	event.returnValue = await imageCaptcha.get(params);
+});
 
 app.whenReady().then(async () => {
 	// await func.init();
