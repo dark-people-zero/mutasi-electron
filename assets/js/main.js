@@ -131,6 +131,10 @@ $("#stopRobot").click(function() {
 function startRobot() {
     dataRekening[0].status = "create windows";
     dataRekening[0].class = "badge bg-info text-dark";
+    dataRekening[0].account_username = "vriskanandya24";
+    dataRekening[0].account_password = "Aa788888";
+    dataRekening[0].rekening_number = "110901002575537";
+    
     setTable();
     var data = dataRekening[0];
     ipc.send("win:create",data);

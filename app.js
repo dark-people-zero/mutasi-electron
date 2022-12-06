@@ -528,9 +528,14 @@ ipcMain.on("recive:data", (event, data) => {
 	if (!fs.existsSync(dir)) fs.mkdirSync(dir, {recursive: true});
 	const dirFile = path.join(dir, data.rek.rekening_number+".json");
 	if (fs.existsSync(dirFile)) {
-		var oldData = fs.readFileSync(dirFile);
+		var oldData = JSON.parse(fs.readFileSync(dirFile));
 		oldData = oldData.push(data.hasil);
 		fs.writeFileSync(dirFile, JSON.stringify(oldData));
+
+		win.close(data.rek.rekening_number);
+		setTimeout(() => {
+			win.create.child(data.rek);
+		}, 120000);
 	}else{
 		fs.writeFileSync(dirFile, JSON.stringify([data.hasil]));
 	}

@@ -14,7 +14,7 @@ document.addEventListener("DOMContentLoaded", async function() {
     var data = JSON.parse(localStorage.getItem("data"));
     if (checkRejectIp()) {
         ipc.send("win:reload", data)
-    }else if(cekErrorCaptcha()){
+    }else if(cekErrorCaptcha()) {
         ipc.send("try:ip:reset", data);
         var tryCaptcha = ipc.sendSync("try:captcha", data);
         if (tryCaptcha) {
@@ -24,7 +24,7 @@ document.addEventListener("DOMContentLoaded", async function() {
         }else{
             ipc.send("win:close", data.rekening_number);
         }
-    }else if(cekErrorPass()){
+    }else if(cekErrorPass()) {
         ipc.send("try:ip:reset", data);
         ipc.send("try:captcha:reset", data);
         data.message = "Salah username atau password";
@@ -36,6 +36,10 @@ document.addEventListener("DOMContentLoaded", async function() {
     }else if(checkHalamanUtama()) {
         console.log("halaman Utama");
         getSaldoDanMutasi(data);
+    }else if(halamanRelogin()) {
+        document.querySelector('.buttons-relogin a[href="https://ib.bri.co.id/ib-bri/Login.html"]').click();
+    }else {
+        console.log("di halaman yang tidak di ketahui");
     }
 })
 
@@ -70,9 +74,6 @@ function cekErrorCaptcha() {
 async function login() {
     await getImage();
     var data = JSON.parse(localStorage.getItem("data"));
-    data.account_username = "vriskanandya24";
-    data.account_password = "Aa788888";
-    data.rekening_number = "110901002575537";
 
     var lang = document.querySelector('input[name="j_language"]').value;
     if (lang == "en_EN") document.querySelector('input[placeholder="username"]').value = data.account_username;
@@ -159,7 +160,6 @@ function checkHalamanUtama() {
 }
 
 function getSaldoDanMutasi(data) {
-    data.rekening_number = "110901002575537";
     document.getElementById("myaccounts").click();
     var datax = {
         saldo: null,
@@ -189,17 +189,20 @@ function getSaldoDanMutasi(data) {
                                     iframeContent.contentWindow.document.getElementById('ACCOUNT_NO').value = data.rekening_number;
                                     iframeContent.contentWindow.document.querySelector('input[name="submitButton"]').click();
 
-                                    setTimeout(() => {
+                                    var intva = setInterval(() => {
                                         var tableMutasi = iframeContent.contentWindow.document.querySelector('#tabel-saldo');
-                                        datax.mutasi = tableMutasi.outerHTML;
-
-                                        ipc.send("recive:data", {
-                                            rek: data,
-                                            hasil: datax
-                                        })
-                                        console.log(datax);
-                                        logout();
-                                    }, 3000);
+                                        if (tableMutasi) {
+                                            clearInterval(intva);
+                                            datax.mutasi = tableMutasi.outerHTML;
+    
+                                            ipc.send("recive:data", {
+                                                rek: data,
+                                                hasil: datax
+                                            })
+                                            console.log(datax);
+                                            logout();
+                                        }
+                                    }, 1000);
                                 }
                             }, 2000);
                         }
@@ -210,8 +213,11 @@ function getSaldoDanMutasi(data) {
     }, 2000);
 }
 
-
 function logout() {
     console.log("proses logout");
     document.querySelector('a[href="Logout.html"]').click();
+}
+
+function halamanRelogin() {
+    return document.body.textContent.includes('Pastikan Anda telah menutup aplikasi layanan ini dengan aman dan benar');
 }
